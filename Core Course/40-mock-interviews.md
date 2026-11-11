@@ -3,9 +3,9 @@
 > **Reading the course makes you *know* system design. This makes you *able to perform it.*** A Staff design round is a 40-minute live performance under an interviewer who keeps changing the constraints. You only get good at it by doing timed, spoken reps — then scoring yourself honestly.
 
 This module is the **practice harness**. The interviewer-side question banks live in:
-- **[40a — Chat, Social & Media](40a-mock-chat-media.md)** — WhatsApp, Slack, Instagram, Twitter, FB Feed, LinkedIn, YouTube, Netflix, Spotify, Zoom, Google Docs, Dropbox, Gmail, news aggregator, live comments, Strava, post search, Tinder
+- **[40a — Chat, Social & Media](40a-mock-chat-media.md)** — WhatsApp, Slack, Instagram, Twitter, FB Feed, LinkedIn, YouTube, Netflix, Spotify, Zoom, Google Docs, Dropbox, Gmail, news aggregator, live comments, Strava, post search, Tinder, Quora, TikTok
 - **[40b — Marketplaces, Money & Infra Primitives](40b-mock-marketplace-infra.md)** — Uber, food delivery, booking, e-commerce, payments, ads, recommendations, URL shortener, rate limiter, notifications, distributed cache, API gateway, web crawler, metrics platform, Yelp, online auction, price tracker
-- **[40c — Advanced & Google-Style](40c-mock-advanced-google.md)** — matching engine, migrations, deployment, real-time analytics, scheduler, live streaming, feature flags, whiteboard, IoT, online judge, online chess, ChatGPT-style chat, + the "build from scratch" primitive drills
+- **[40c — Advanced & Google-Style](40c-mock-advanced-google.md)** — matching engine, migrations, deployment, real-time analytics, scheduler, live streaming, feature flags, whiteboard, IoT, online judge, online chess, ChatGPT-style chat, AI code assistant, ML data platform, + the "build from scratch" primitive drills
 
 Each entry gives the **opening prompt**, the **scope curveballs** to reveal only when asked, **the crux** that separates hire from no-hire, **8–10 escalating follow-up probes**, a **strong-vs-weak rubric**, and the **common traps**.
 

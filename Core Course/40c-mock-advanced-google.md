@@ -30,6 +30,8 @@
 - [Online judge (LeetCode)](#online-judge-leetcode)
 - [Online chess (Chess.com / Lichess)](#online-chess-chesscom--lichess)
 - [ChatGPT-style LLM chat app](#chatgpt-style-llm-chat-app)
+- [AI code assistant (Copilot-style)](#ai-code-assistant-copilot-style)
+- [Data platform for AI/ML](#data-platform-for-aiml)
 - [Google "Build From Scratch" drills](#google-build-from-scratch-drills)
 - [Scoring](#scoring)
 
@@ -549,6 +551,88 @@
 
 - **Common traps:** ignoring the context window; treating conversations as flat lists; forgetting cancellation frees GPU.
 - **Reference design:** [53 — ChatGPT-style LLM Chat](53-design-chatgpt.md).
+
+---
+
+### AI code assistant (Copilot-style)
+
+- **Opening prompt:** "Design an AI code assistant. As a developer types in their IDE it suggests completions inline, and it has a chat that answers questions about the repository."
+
+- **If they ask scope (curveballs to reveal):**
+  - ~1M daily developers; completions fire many times a minute each.
+  - Inline completion must appear in about 300 ms; chat can take seconds.
+  - Customers are enterprises: their code must not leak or be trained on.
+  - **Mid-interview change #1:** "p95 completion latency is 900 ms. Find it and fix it." (budget decomposition; client-side wins.)
+  - **Mid-interview change #2:** "A customer asks: where does my code go?" (retention, tenant isolation, exclusions.)
+
+- **The crux (what they MUST nail):**
+  1. **Two paths:** small fast model for completion, larger model + retrieval for chat.
+  2. **Latency budget and waste:** debounce, cancel, cache, prefix caching, regional serving, show nothing if late.
+  3. **Context assembly:** prefix + suffix + tab snippets on the client; per-tenant repo index for chat.
+
+- **Follow-up probes (escalating):**
+  1. Why not one model and one pipeline for both features?
+  2. Break the 300 ms budget into parts.
+  3. The user types 8 characters a second. How many requests reach a GPU?
+  4. What goes into the completion prompt, and who builds it?
+  5. Why does code after the cursor matter?
+  6. How does chat find the right files in a 2M-line repository?
+  7. How do you know suggestions are good without labels?
+  8. **Brutal:** A request is cancelled mid-generation. What happens on the server?
+  9. **Brutal:** Retrieval returns a file the user can't access. How was that possible, and how do you prevent it?
+  10. **Brutal:** GPU cost per developer exceeds the subscription price. What do you change first?
+
+- **Strong answer covers / Weak answer red flags:**
+  - ✅ Client-side debounce, cancel and cache named first; server stops on cancel.
+  - ✅ Fill-in-the-middle with a token budget; no retrieval on the completion hot path.
+  - ✅ Acceptance + retained characters; tenant-scoped indexes and caches.
+  - ❌ Vector search on every keystroke.
+  - ❌ Measures quality by thumbs-up only.
+  - ❌ No answer on code retention or cross-tenant isolation.
+
+- **Common traps:** designing only the server; unbounded output length; a shared prompt cache across tenants.
+- **Reference design:** [55 — AI Code Assistant](55-design-code-assistant.md).
+
+---
+
+### Data platform for AI/ML
+
+- **Opening prompt:** "Design the data infrastructure for a company's AI and ML systems: ingest from many sources, make data usable for analytics and training, and serve features to models online."
+
+- **If they ask scope (curveballs to reveal):**
+  - ~10 TB/day ingested from databases, events and files; petabytes stored.
+  - Thousands of features; online reads must be under 10 ms.
+  - Regulated: users can ask for their data to be deleted.
+  - **Mid-interview change #1:** "The model is great offline and poor in production." (training-serving skew or leakage.)
+  - **Mid-interview change #2:** "A user asks to be erased, and legal wants proof." (lineage-driven deletion, snapshot expiry.)
+
+- **The crux (what they MUST nail):**
+  1. **Layered storage:** raw → cleaned → curated zones in an open table format.
+  2. **Feature store:** one definition, offline history + online latest; point-in-time joins.
+  3. **Trust plane:** catalog, lineage and quality gates; deletion vs reproducibility.
+
+- **Follow-up probes (escalating):**
+  1. Why keep a raw zone at all?
+  2. What does a table format add over Parquet files in a bucket?
+  3. Streaming or batch ingestion? Where does CDC fit?
+  4. What is training-serving skew, and how does the platform prevent it?
+  5. Build a training set for a churn model. What can go wrong in the join?
+  6. A feature is 6 hours stale in production. How do you find out?
+  7. An upstream team renames a column on Friday night.
+  8. **Brutal:** Reproduce exactly the data model v12 was trained on, a year later.
+  9. **Brutal:** Delete one user's data everywhere, including old snapshots and Kafka.
+  10. **Brutal:** A backfill doubles last month's revenue numbers. How was that possible?
+
+- **Strong answer covers / Weak answer red flags:**
+  - ✅ Zones + table format with reasons (atomic commits, schema evolution, time travel).
+  - ✅ One feature definition, as-of joins, logged served features.
+  - ✅ Quality gates that block promotion; lineage used for impact, reproducibility and deletion.
+  - ❌ "Kafka, Spark, S3" with no trust story.
+  - ❌ Features implemented separately for training and serving.
+  - ❌ Deletes a row and forgets snapshots and derived copies.
+
+- **Common traps:** treating it as a pipeline diagram; ignoring small files and compaction; no ownership model.
+- **Reference design:** [56 — Data Platform for AI/ML](56-design-ml-data-platform.md).
 
 ---
 

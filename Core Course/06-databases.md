@@ -47,7 +47,7 @@ Cross-links: [Fundamentals](01-fundamentals.md) · [Distributed Systems](02-dist
 8. [Interview Frameworks](#7-interview-frameworks)
    - [7.1 SQL vs NoSQL Decision Framework](#71-sql-vs-nosql-decision-framework)
    - [7.2 Sharding Strategy Framework](#72-sharding-strategy-framework)
-   - [7.3 Designing for 1 Billion Users](#73-designing-for-1-billion-users)
+   - [7.3 Designing for 1 Billion Users](#73-designing-for-1-billion-users--1b-rows)
 9. [Interview Cheat-Sheet](#interview-cheat-sheet)
 10. [Common Interview Questions](#common-interview-questions)
 
@@ -656,6 +656,8 @@ flowchart TB
 > **Staff-level insight:** 90% of sharding success is the shard key. State your reasoning explicitly: cardinality, distribution, access-pattern alignment, hotspot avoidance. The strongest answer adds: **"I'd use a fixed number of logical/virtual shards from day one so resharding moves whole shards instead of rehashing everything — and I'd choose the key so transactions stay single-shard, avoiding 2PC."** That's a Staff-grade answer that shows you've felt the pain of a bad shard key. And lead with *reluctance*: "first I'd confirm replicas + cache + partitioning are exhausted — sharding is the last lever, not the first."
 
 ---
+
+**Vertical sharding (functional partitioning) — the step before horizontal sharding.** Instead of splitting one table's *rows* across nodes, move whole *tables or domains* onto separate database clusters: content on one, the social graph on another, votes and counters on a third. It's the right first move when a few tables take a disproportionate share of queries, because it relieves the hot instance without choosing a shard key or rewriting queries to route by key. The costs: joins across domains move into application code, and a transaction can no longer span them (use an [outbox or saga](../Deep%20Dives/15-pattern-multi-step-processes.md)). It also has a ceiling, since one domain can still outgrow a node, and that domain is the one you then shard horizontally. Order of operations: **cache and replicas → vertical partition by domain → horizontal shard the domain that still doesn't fit** (worked through in [57 — Quora](57-design-quora.md)).
 
 ### 4.4 Partitioning vs Sharding
 

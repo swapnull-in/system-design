@@ -28,7 +28,7 @@ This is **not** a skim. Treat each module as a 2–4 hour deep session. The goal
 
 | Folder | What's inside |
 |---|---|
-| **[Core Course/](Core%20Course/)** | The 66 numbered modules (01–54 incl. the 02b/13b/17b/19b L6 companions and the 41 multiplayer / 42 cluster-scheduler / 43 calendar / 44 news aggregator / 45 live comments / 46 online judge / 47 Yelp / 48 online auction / 49 Strava / 50 price tracker / 51 post search / 52 chess / 53 ChatGPT / 54 Tinder archetypes) — the main curriculum mapped below |
+| **Core Course/** | The 70 numbered modules (01–58 incl. the 02b/13b/17b/19b L6 companions and the 41 multiplayer / 42 cluster-scheduler / 43 calendar / 44 news aggregator / 45 live comments / 46 online judge / 47 Yelp / 48 online auction / 49 Strava / 50 price tracker / 51 post search / 52 chess / 53 ChatGPT / 54 Tinder / 55 code assistant / 56 ML data platform / 57 Quora / 58 TikTok archetypes) — the main curriculum mapped below |
 | **[Deep Dives/](Deep%20Dives/00-INDEX.md)** | Technology deep dives (Redis→ClickHouse), the patterns series, and the applied case studies (CS-23–33: money path + analytics/ranking/typeahead + the journey walkthrough + quick commerce + the message-queue build + the messaging mastery bar) |
 | **[Mobile System Design/](Mobile%20System%20Design/00-INDEX.md)** | The Google EM/Staff client-side track: framework + foundations + 19 case studies |
 
@@ -115,6 +115,10 @@ This is **not** a skim. Treat each module as a 2–4 hour deep session. The goal
 - **[52 — Online Chess](Core%20Course/52-design-online-chess.md)** — one owning server per game, moves appended to a durable log before ack (replay on failover under a fenced lease), server-side clocks with bounded lag compensation, rating-window matchmaking with atomic pair-claim, idempotent Glicko-2 updates.
 - **[53 — ChatGPT-style LLM Chat](Core%20Course/53-design-chatgpt.md)** — GPU tokens/s as the budget: context-window prompt building, token-bucket admission + priority with deadlines + degradation ladder, prefix-cache-affine routing, continuous batching + paged KV cache, resumable SSE via a per-message token buffer, message tree for regenerate/edit.
 - **[54 — Tinder](Core%20Course/54-design-tinder.md)** — one row per unordered pair makes mutual-swipe matches exact under any race; precomputed ranked stacks from geo + mutual-preference queries, Bloom-filter seen-filtering, async refill; coarsened distances against trilateration.
+- **[55 — AI Code Assistant (Copilot-style)](Core%20Course/55-design-code-assistant.md)** — two paths: a 300 ms inline-completion path (client debounce/cancel/cache, fill-in-the-middle context, small model, prefix caching) and a retrieval-backed chat path (per-tenant repo index); quality by acceptance + retained code; tenant isolation.
+- **[56 — Data Platform for AI/ML](Core%20Course/56-design-ml-data-platform.md)** — raw → cleaned → curated zones in an open table format; one feature definition materialized offline + online; point-in-time joins against leakage; catalog, lineage and quality gates; deletion vs reproducibility.
+- **[57 — Quora (Q&A Platform)](Core%20Course/57-design-quora.md)** — long-tail, search-driven reads served from cache/CDN; answer ranking by evidence-adjusted quality (Wilson bound, exposure, voter credibility); duplicate-question detection and merge; pull-based topic feed; vertical partitioning before sharding.
+- **[58 — TikTok (Short-Video Backend)](Core%20Course/58-design-tiktok.md)** — no fan-out: a per-request recall → filter → pre-rank → rank → re-rank funnel with a budget per stage; seconds-fresh feedback loop; staged exploration for cold start; prefetch for instant playback.
 
 ### Deep Dives — technology-specific mastery 🟨
 > One technology per note, at the depth interviewers probe when you name-drop it. Sourced from the best deep-dive videos/articles, distilled into the course format. See the **[Deep Dives index](Deep%20Dives/00-INDEX.md)**.

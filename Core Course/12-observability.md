@@ -1025,6 +1025,47 @@ State the formula: **cost ≈ (events/sec × bytes/event × $/GB × retention)**
 
 > **Decision (default):** **OTel for instrumentation + buy the backend (Grafana Cloud / Datadog) early; self-host LGTM/Thanos when the SaaS bill exceeds ~3 FTE of fully-loaded engineering cost.** *Because* a platform team to run self-hosted observability is itself expensive, so SaaS is cheaper until your data volume makes the bill clear that bar — and because you instrumented with OTel, switching is a Collector exporter change, not a re-instrumentation project. *Revisit if* compliance/data-residency forces self-hosting earlier, regardless of cost. Naming the concrete crossover ("we self-host once Datadog exceeds ~3 engineers") is the economic reasoning Staff/Director loops reward; "it depends on scale" is the answer that loses points.
 
+### Client-side monitoring — the failures your servers never see
+
+**Definition.** Server-side telemetry only sees requests that **arrive**. A DNS failure, a BGP route leak at a peer ISP, a broken CDN edge, an expired certificate, or a bad mobile release can stop users reaching you while every server dashboard stays green. **Client-side monitoring** measures from the user's side, and comes in two forms: **synthetic probes** (you act as a client) and **real-user monitoring, RUM** (the real clients report).
+
+**Why "watch for a traffic dip" isn't enough.** Traffic varies naturally, so a dip alert is either too noisy or too slow, and a failure that hits one ISP, one region or one app version is a small share of total traffic. You need a signal that says *who* is failing and *where*.
+
+| Approach | How | Sees | Blind spot |
+|---|---|---|---|
+| **Synthetic probes** (active) | Scripted requests from vantage points around the world, every N seconds | Reachability and latency per region, even at 3 am with no users; works before launch | Coverage (there are 100k+ autonomous systems; you probe a few hundred); synthetic traffic isn't real user behaviour |
+| **RUM / client agent** (passive) | An SDK in the browser or app reports errors, timings and failed requests from real sessions | Every network, device and app version your users actually have | Nothing when no one is using the product; needs consent and privacy care; a client that can't reach you can't report to you either (see below) |
+
+Use **both**: probes for a clean, always-on baseline and for alerting; RUM for coverage and for answering "which users?".
+
+**The design — agent, independent collector, and a way to reach it when things are broken.**
+
+```mermaid
+flowchart LR
+    APP["Client app / browser<br/>agent: buffers reports,<br/>samples, respects consent"] -->|"normal request"| SVC[Primary service]
+    APP -.->|"request failed:<br/>send a small report"| COL["Collector<br/>different domain, DNS provider,<br/>CDN/ASN and region"]
+    COL --> Q[Stream / queue] --> AGG["Aggregate by ASN, region,<br/>app version, error type"]
+    AGG --> AL["Alert on error-rate spikes<br/>per dimension"]
+    PR["Synthetic probers<br/>(global vantage points)"] -->|scheduled checks| SVC
+    PR --> AGG
+```
+
+- **The collector must not share fate with what it monitors.** If reports go to `api.example.com` and that is what's unreachable, you learn nothing. Host the collector on a **different domain, DNS provider, network/CDN and region** from the primary service. This is the [static-stability](28-designing-for-failure.md) rule applied to telemetry: the monitoring path can't depend on the thing being monitored.
+- **The agent buffers and retries.** Store reports locally (bounded) and upload when any path works, so an outage shows up late rather than never. Batch, compress and sample to protect battery and data on mobile ([Mobile 05](../Mobile%20System%20Design/05-performance-battery-startup.md)).
+- **Control it remotely.** A response header or remote config tells clients what to report and at what sample rate, so you can turn reporting up during an incident and off if the collector is overloaded.
+- **Aggregate on dimensions that localize the fault:** autonomous system (ISP), country/region, app version, OS, CDN PoP, and error class (DNS, TCP, TLS, HTTP status, timeout). "Errors up 40× for one ISP in one country" is a routing problem; "up for one app version everywhere" is a release.
+- **Browsers have a built-in version:** the **Reporting API / Network Error Logging (NEL)** lets a site ask browsers to report connection failures to an endpoint you name, which is exactly the agent-and-collector pattern.
+
+**Privacy is part of the design.** Collect the minimum: coarse location (country or region, not coordinates), truncated IPs, no traceroute hops or resolver details that reveal where someone is, no URLs with personal data in them. Ask consent where the law requires it, and give reports a short retention.
+
+**Pitfalls.**
+- Collector on the same domain or CDN as the service: it goes down with it.
+- Unsampled RUM from millions of clients becomes its own DDoS and its own bill; sample by default and raise the rate on demand.
+- Alerting on global error rate only: a regional or single-ISP outage never crosses the threshold. Alert **per dimension**.
+- Counting only errors that reach your servers, which misses the whole class this section is about.
+
+> **Staff-level insight:** *"My server SLIs are measured where requests arrive, so they miss users who never arrive. I'd add synthetic probes for an always-on baseline and RUM for coverage, send client reports to a collector that shares no domain, DNS, CDN or region with the service, and alert on error rate per ISP, region and app version. The Facebook 2021 outage is the reminder: their own tools sat behind the network that failed."* Measuring the SLO **from the client** is also the honest version of the number: availability as the user experienced it, not as the load balancer logged it.
+
 ### Build vs Buy (recap)
 
 See §10. **OTel for instrumentation + buy the backend early; self-host LGTM/Thanos when the SaaS bill exceeds a small team's cost.** OTel keeps the decision reversible.
@@ -1130,6 +1171,7 @@ Dead-ends I rule out here, fast, and *say so out loud*: error rate flat → not 
 - *"Monitoring is for known-unknowns; observability is for unknown-unknowns — and the difference is **cardinality**."*
 - *"The three pillars are a billing artifact; the real unit is the **wide structured event** you can derive all three from."*
 - *"**Alert on SLO burn rate, not CPU.** CPU is a diagnostic signal, not a page."*
+- *"Server metrics only see requests that **arrive**. Synthetic probes plus RUM, reporting to a collector that shares no fate with the service, cover the users who never got there."*
 - *"**Metrics tell you *that*, traces tell you *where*, logs tell you *why*** — joined by a propagated **trace_id**."*
 - *"You **can't average percentiles** — merge histogram buckets and compute the quantile."*
 - *"**RED for services, USE for resources**, four golden signals as the SLO-aligned superset."*
@@ -1202,6 +1244,9 @@ Dead-ends I rule out here, fast, and *say so out loud*: error rate flat → not 
 
 **Q12. (Meta / delivery) Your interviewer pushes back: "Why not just put everything in Datadog and add `user_id` to your metrics so you can slice by user?"**
 **A.** I'd push back decisively, not hedge. Two separate things: **Datadog-vs-self-host** is a reversible cost decision (fine to start on Datadog *because* we instrumented with OTel, so leaving is a Collector config change — revisit at the ~3-FTE cost crossover). But **`user_id` as a metric label is a hard no** — it's an unbounded cartesian factor that OOMs the TSDB and explodes Datadog custom-metric billing. High-cardinality slicing by user belongs in **traces and logs** (wide events), or a columnar event store like Honeycomb, *not* metric labels. The correct answer to "slice by user" is "that question lives at the event level, queried at read time — that's exactly the metrics-vs-observability cardinality distinction." Refusing the bad label crisply, while conceding the reasonable build-vs-buy point, is the calibrated-judgment signal the question is testing.
+
+**Q13. Users in one country report the app is down, but every dashboard is green. What happened, and how should you have known first?**
+**A.** The failure is **between the user and us**: DNS, a BGP route leak at an ISP, a CDN edge, or a certificate, so the requests never reach the servers whose metrics I'm looking at. Server-side SLIs can't see it, and a global traffic-dip alert won't fire for a slice this small. I should have had two client-side signals: **synthetic probes** from vantage points in that region, and **RUM** from the app itself, reporting failed requests to a **collector on a different domain, DNS provider, CDN and region**, so reports still get out when the main path is broken. Aggregated by **ISP (autonomous system), region and app version**, that turns "is it us?" into "errors are 40× normal for one ISP in one country" within minutes. I'd keep the reports minimal and sampled for privacy and cost, and raise the sample rate remotely during an incident.
 
 ---
 

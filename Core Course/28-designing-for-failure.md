@@ -309,6 +309,11 @@ A statically stable system, when its control plane fails, **keeps doing whatever
 
 The canonical real-world illustration: in major AWS control-plane outages, **already-running EC2 instances kept serving traffic** — your live application stayed up — but the **APIs to launch new instances, change security groups, or attach volumes failed.** That's static stability working: existing data-plane capacity survived a control-plane outage. The failures bit hardest for anyone whose *recovery* depended on the control plane (e.g., autoscaling to add capacity, or failover that needed an API call to re-route) — they couldn't react because the very tool to react was down.
 
+**A dated example — AWS us-east-1, Dec 7, 2021** (from AWS's public post-event summary; details as reported). An automated scaling activity on AWS's **internal** network triggered a surge of connection attempts that congested the devices linking that internal network to the main AWS network. Three things followed, each a lesson:
+- **The monitoring ran over the congested network**, so operators lost their real-time view and had to diagnose from logs. *Your observability must not share fate with what it observes* (the same rule as [client-side monitoring](12-observability.md#client-side-monitoring--the-failures-your-servers-never-see)).
+- **Control planes were impaired while data planes held:** existing EC2 instances and load balancers kept serving, but launching, scaling and many API calls failed. Customers who needed to *change* something to recover were stuck.
+- **Retries from clients made the congestion worse**, the [metastable](#2-metastable-failures-deep) pattern: the trigger passed, but the retry load sustained the failure.
+
 This drives two Staff design rules:
 
 1. **Pre-provision for the failure case.** A statically stable failover design keeps the standby *already running at full size* so failover is just a traffic shift (data-plane action), not a "scale up the standby" (control-plane action) that fails exactly when you need it. Over-provision rather than depend on scaling-during-an-incident.

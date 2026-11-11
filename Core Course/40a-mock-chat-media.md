@@ -33,6 +33,8 @@ Cross-reference: **[20 Staff Execution](20-staff-execution.md)** and **[26 Googl
 - [Strava (fitness activity tracking)](#strava-fitness-activity-tracking)
 - [Facebook post search (no search engine)](#facebook-post-search-no-search-engine)
 - [Tinder (location-based matching)](#tinder-location-based-matching)
+- [Quora (Q&A platform)](#quora-qa-platform)
+- [TikTok (short-video backend)](#tiktok-short-video-backend)
 - [How to score (Staff rubric)](#how-to-score-staff-rubric)
 
 ---
@@ -793,6 +795,88 @@ Cross-reference: **[20 Staff Execution](20-staff-execution.md)** and **[26 Googl
 
 - **Common traps:** missing the race entirely; Bloom filter false negatives assumed possible (they aren't); ranking fairness never mentioned.
 - **Reference design:** [54 — Tinder](54-design-tinder.md).
+
+---
+
+### Quora (Q&A platform)
+
+- **Opening prompt:** "Design Quora. Users ask questions, write answers, upvote and comment, search existing questions, and get a personalised feed."
+
+- **If they ask scope (curveballs to reveal):**
+  - ~300M monthly visitors, about 80% anonymous and arriving from search engines.
+  - Writes are tiny: a few questions and answers per second, ~100 votes/s.
+  - Answers on a question page must be ordered by quality.
+  - **Mid-interview change #1:** "The first answer posted always ends up on top, even when a later one is better. Fix it." (ranking by evidence, exposure, exploration.)
+  - **Mid-interview change #2:** "The same question exists in 40 variants." (duplicate detection and merge.)
+
+- **The crux (what they MUST nail):**
+  1. **Workload shape:** long-tail, read-heavy, anonymous → pre-assembled pages from cache/CDN; DB is the miss path.
+  2. **Answer ranking** as a stored, asynchronously computed quality score, not a sort by votes.
+  3. **Feed is pull by topic**, not fan-out-on-write; duplicates caught at ask time.
+
+- **Follow-up probes (escalating):**
+  1. BOTEC: page views/s vs writes/s vs corpus size. What does that say about where to spend effort?
+  2. How is a question page served to an anonymous visitor?
+  3. Why is sorting answers by upvotes wrong? What do you use instead?
+  4. One vote per user per answer: where is that enforced?
+  5. A viral answer gets 5k votes/s. What takes the load?
+  6. How does the feed work when a topic has 10M followers?
+  7. How do you stop the same question being asked repeatedly?
+  8. **Brutal:** A vote ring pushes spam to the top of a popular question.
+  9. **Brutal:** Merge two duplicate questions with 200 answers each without breaking links.
+  10. **Brutal:** The content database is hot. Walk through what you do before sharding.
+
+- **Strong answer covers / Weak answer red flags:**
+  - ✅ Says it is not Twitter: search-driven, old content is hot, cache first.
+  - ✅ Wilson-style lower bound, exposure-normalised, credibility-weighted score stored on the answer.
+  - ✅ Pull feed from per-topic lists; similar-question search at ask time.
+  - ❌ Fan-out-on-write for topic follows.
+  - ❌ `ORDER BY upvotes` at read time.
+  - ❌ Shards a sub-terabyte dataset on day one.
+
+- **Common traps:** copying the timeline design; ignoring anonymous traffic; counters on the answer row.
+- **Reference design:** [57 — Quora](57-design-quora.md).
+
+---
+
+### TikTok (short-video backend)
+
+- **Opening prompt:** "Design TikTok. Users upload short videos and scroll an endless personalised For You feed."
+
+- **If they ask scope (curveballs to reveal):**
+  - ~1B DAU, ~200 videos watched per user per day; ~30M uploads/day.
+  - The feed is recommendation-driven, not based on who you follow.
+  - A swipe must start playing almost instantly.
+  - **Mid-interview change #1:** "A brand-new creator uploads a great video. How does anyone ever see it?" (cold start, staged exploration.)
+  - **Mid-interview change #2:** "Ranking capacity is cut in half during an incident." (degradation ladder.)
+
+- **The crux (what they MUST nail):**
+  1. **No fan-out:** a per-request funnel (recall → filter → pre-rank → rank → re-rank) with a latency budget per stage.
+  2. **Feedback loop:** watch events become features and counters within seconds.
+  3. **Instant playback:** small first segment, prefetch of the next videos, CDN.
+
+- **Follow-up probes (escalating):**
+  1. How is this different from designing Twitter's timeline?
+  2. BOTEC: feed requests/s, events/s, model scores/s.
+  3. Where do candidates come from? Why more than one source?
+  4. Why can't the heavy model rank everything?
+  5. How do the last three videos I watched affect the next batch?
+  6. Never show me the same video twice: how?
+  7. Upload to first view: what happens in between?
+  8. **Brutal:** New video, zero data: how does it get distribution without hurting the feed?
+  9. **Brutal:** Ranking is overloaded. What does the user see?
+  10. **Brutal:** The recommender keeps narrowing what people see. How do you detect and counter it?
+
+- **Strong answer covers / Weak answer red flags:**
+  - ✅ Funnel with per-stage budgets; multi-source recall including an exploration pool.
+  - ✅ Streaming features; batches of ~10 with early re-request.
+  - ✅ Degradation ladder ending in cached trending, never an empty feed.
+  - ❌ Precomputed per-user timelines via fan-out.
+  - ❌ One model scoring the whole corpus.
+  - ❌ No answer for cold start.
+
+- **Common traps:** treating it as YouTube; forgetting moderation before distribution; ignoring egress cost.
+- **Reference design:** [58 — TikTok](58-design-tiktok.md).
 
 ---
 

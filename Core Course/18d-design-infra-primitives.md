@@ -18,10 +18,10 @@ These designs assume familiarity with the foundational modules. Cross-references
 2. [Pastebin](#2-pastebin)
 3. [Distributed Rate Limiter](#3-distributed-rate-limiter)
 4. [Notification System (multi-channel)](#4-notification-system-multi-channel)
-5. [Distributed Cache (Redis/Memcached-like)](#5-distributed-cache-redismemcached-like)
+5. [Distributed Cache (Redis/Memcached-like)](#5-distributed-cache-redis--memcached-like)
 6. [API Gateway](#6-api-gateway)
 7. [Web Crawler & Search Indexing](#7-web-crawler--search-indexing)
-8. [Logging / Metrics / Monitoring Platform](#8-logging--metrics--monitoring-platform)
+8. [Logging / Metrics / Monitoring Platform](#8-logging--metrics--monitoring-platform-datadog--prometheus-like)
 - [Closing: the patterns to carry forward](#closing-the-patterns-to-carry-forward)
 
 ---
@@ -132,6 +132,7 @@ Given a long URL, produce a short alias (`https://sho.rt/aZ3kP`) that, when visi
 - 62^7 = ~3.5 **trillion**.
 - At 100M/day we generate 36.5B/year. 62^7 covers ~95 years; 62^6 is exhausted in ~1.5 years.
 - **Choose 7 characters.** Headroom for a decade-plus; only 1 char more than 6.
+- **Base-58 variant:** drop the four look-alike characters (`0`, `O`, `I`, `l`) so codes survive being read aloud or typed by hand. 58^7 ≈ 2.2 trillion, still ~60 years at this rate. Pick it when links are printed or dictated; otherwise base62 is the default.
 
 > **Altitude cue:** do this calculation fast and out loud, then *stop*. The base62 math is the one place uniform thoroughness is rewarded because it's the crux; don't then spend equal time deriving the storage number — state it and move on.
 
